@@ -1,5 +1,5 @@
 plugins {
-    kotlin("android") version "1.9.23"
+    kotlin("android")
 }
 
 version = 4
