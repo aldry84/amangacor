@@ -32,6 +32,7 @@ jobs:
         run: |
           rm -f $GITHUB_WORKSPACE/builds/*.cs3 || true
           rm -f $GITHUB_WORKSPACE/builds/*.jar || true
+          rm -f $GITHUB_WORKSPACE/builds/*.zip || true
           rm -f $GITHUB_WORKSPACE/builds/plugins.json || true
 
       - name: Setup JDK 17
@@ -55,6 +56,11 @@ jobs:
           cp **/build/*.jar $GITHUB_WORKSPACE/builds || true
           cp build/plugins.json $GITHUB_WORKSPACE/builds || true
 
+      - name: Create ZIP of all builds
+        run: |
+          cd $GITHUB_WORKSPACE/builds
+          zip -r "Moviebox_build_${{ github.run_number }}.zip" ./*.cs3 ./*.jar plugins.json || true
+
       - name: Push new builds to builds branch
         run: |
           cd $GITHUB_WORKSPACE/builds
@@ -64,22 +70,39 @@ jobs:
           git commit --amend -m "Auto Build $GITHUB_SHA" || exit 0
           git push --force
 
+      - name: Generate changelog from commits
+        id: changelog
+        run: |
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          git log -1 --pretty=format:"%s%n%n%b" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        working-directory: ${{ github.workspace }}/src
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "build-${{ github.run_number }}"
-          name: "Auto Build #${{ github.run_number }}"
+          tag_name: "moviebox-v4-build-${{ github.run_number }}"
+          name: "Moviebox v4 • Build #${{ github.run_number }}"
           body: |
-            🔥 **Automatic build from commit:** `${{ github.sha }}`
-            
+            🚀 **Automatic Moviebox Plugin Build**
+            🔹 Commit: `${{ github.sha }}`
+            🔹 Version: v4
+            🔹 Build Number: #${{ github.run_number }}
+
             🧱 Files:
-            - `.cs3` (Cloudstream plugin)
-            - `.jar` (Java library)
-            
+            - `.cs3` → Cloudstream plugin file
+            - `.jar` → compiled JAR library
+            - `.zip` → all files in one archive
+
+            ---
+            **Changelog:**
+            ${{ env.CHANGELOG }}
+
             _Generated automatically by GitHub Actions._
           files: |
             builds/*.cs3
             builds/*.jar
+            builds/*.zip
             builds/plugins.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
