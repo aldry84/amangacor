@@ -1,4 +1,5 @@
 plugins {
+    id("com.lagradost.cloudstream3.gradle")
     kotlin("android")
 }
 
@@ -22,10 +23,6 @@ repositories {
     google()
     mavenCentral()
     maven("https://jitpack.io")
-}
-
-dependencies {
-    implementation("com.github.recloudstream:cloudstream:4.0.0")
 }
 
 kotlin {
