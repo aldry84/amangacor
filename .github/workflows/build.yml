@@ -55,7 +55,7 @@ jobs:
           cp **/build/*.jar $GITHUB_WORKSPACE/builds || true
           cp build/plugins.json $GITHUB_WORKSPACE/builds || true
 
-      - name: Push new builds
+      - name: Push new builds to builds branch
         run: |
           cd $GITHUB_WORKSPACE/builds
           git config user.name "GitHub Actions"
@@ -63,3 +63,23 @@ jobs:
           git add .
           git commit --amend -m "Auto Build $GITHUB_SHA" || exit 0
           git push --force
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "build-${{ github.run_number }}"
+          name: "Auto Build #${{ github.run_number }}"
+          body: |
+            🔥 **Automatic build from commit:** `${{ github.sha }}`
+            
+            🧱 Files:
+            - `.cs3` (Cloudstream plugin)
+            - `.jar` (Java library)
+            
+            _Generated automatically by GitHub Actions._
+          files: |
+            builds/*.cs3
+            builds/*.jar
+            builds/plugins.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
