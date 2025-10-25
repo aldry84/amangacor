@@ -1,15 +1,15 @@
 plugins {
     id("com.lagradost.cloudstream3.gradle") version "1.0.0"
-    // Pastikan plugin ini sesuai dengan versi Cloudstream SDK kamu
+    kotlin("android") version "1.9.23"
 }
 
-version = 4 // Gunakan angka integer untuk versi
+version = 4 // Gunakan integer untuk versi plugin
 
 cloudstream {
-    // Bahasa utama plugin
+    // Bahasa utama
     language = "en"
 
-    // Nama penulis atau pengembang
+    // Nama penulis
     authors = listOf("Hexated")
 
     /**
@@ -29,9 +29,24 @@ cloudstream {
         "AsianDrama",
     )
 
-    // Ikon untuk plugin (bisa favicon atau logo)
+    // Ikon
     iconUrl = "https://moviebox.ph/favicon.ico"
 
     // Deskripsi opsional
     description = "Moviebox source for Cloudstream 4 with TV, Movie, Anime, and Drama support."
+}
+
+repositories {
+    google()
+    mavenCentral()
+    maven("https://jitpack.io")
+}
+
+dependencies {
+    // Cloudstream core SDK (pastikan versi sesuai template SDK kamu)
+    implementation("com.github.recloudstream:cloudstream:4.0.0")
+}
+
+kotlin {
+    jvmToolchain(17)
 }
