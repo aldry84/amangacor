@@ -1,0 +1,93 @@
+name: Build
+
+# concurrency: cancel in-progress builds for same group
+concurrency:
+  group: "build"
+  cancel-in-progress: true
+
+# permission supaya workflow dapat push ke repo menggunakan GITHUB_TOKEN
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths-ignore:
+      - '*.md'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          path: src
+          persist-credentials: true    # biar GITHUB_TOKEN tersedia untuk push
+
+      - name: Checkout builds branch (if you keep a branch named "builds")
+        uses: actions/checkout@v4
+        with:
+          ref: builds
+          path: builds
+          persist-credentials: true
+
+      - name: Clean old builds
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/builds
+          rm -f $GITHUB_WORKSPACE/builds/*.cs3 || true
+          rm -f $GITHUB_WORKSPACE/builds/*.jar || true
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Build Plugins
+        working-directory: ${{ github.workspace }}/src
+        run: |
+          # pastikan gradlew executable
+          chmod +x ./gradlew
+
+          # Build (sesuaikan task jika project butuh variant lain)
+          ./gradlew make makePluginsJson || ./gradlew assembleRelease || exit 1
+          ./gradlew ensureJarCompatibility || true
+
+          # pastikan folder outputs ada
+          mkdir -p $GITHUB_WORKSPACE/builds
+
+          # copy semua *.cs3 dan *.jar dari subproject build directories
+          # find digunakan supaya tidak bergantung pada globstar
+          find . -type f -path "*/build/*.cs3" -exec cp --parents {} $GITHUB_WORKSPACE/builds/ \; || true
+          find . -type f -path "*/build/*.jar" -exec cp --parents {} $GITHUB_WORKSPACE/builds/ \; || true
+
+          # copy plugins.json (jika ada)
+          if [ -f build/plugins.json ]; then
+            cp build/plugins.json $GITHUB_WORKSPACE/builds/ || true
+          fi
+
+      - name: Prepare builds commit
+        working-directory: ${{ github.workspace }}/builds
+        run: |
+          git init
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git checkout -B builds || git checkout --orphan builds || true
+
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+
+          # add and commit only if there are changes
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Build $GITHUB_SHA"
+          git push --force origin builds
